@@ -85,6 +85,8 @@ jobs:
         run: |
           gh release delete v --yes >/dev/null 2>&1 || true
           gh api --method DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/v" >/dev/null 2>&1 || true
+          gh release delete v1.0.1 --yes >/dev/null 2>&1 || true
+          gh api --method DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/v1.0.1" >/dev/null 2>&1 || true
 
       - name: Publish GitHub Release
         env:
