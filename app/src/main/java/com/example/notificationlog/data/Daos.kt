@@ -68,7 +68,7 @@ interface NotificationDao {
                       ((CAST(strftime('%H', v.timestamp / 1000, 'unixepoch', 'localtime') AS INTEGER) * 60) +
                        CAST(strftime('%M', v.timestamp / 1000, 'unixepoch', 'localtime') AS INTEGER)) <= :endTimeMinute)
                 )
-          ))
+          )
         ORDER BY t.lastChangedAt DESC
     """)
     fun observeThreadSummariesFiltered(
