@@ -24,9 +24,9 @@ data class LogFilter(
 
     fun startMillis(): Long? = fromDate?.atStartOfDay(ZoneId.systemDefault())?.toInstant()?.toEpochMilli()
     fun endMillis(): Long? = toDate?.plusDays(1)?.atStartOfDay(ZoneId.systemDefault())?.toInstant()?.toEpochMilli()
-    fun startMinute(): Int = fromTime?.let { it.hour * 60 + it.minute } ?: -1
-    fun endMinute(): Int = toTime?.let { it.hour * 60 + it.minute } ?: -1
-    fun crossesMidnight(): Int = if (fromTime != null && toTime != null && startMinute() > endMinute()) 1 else 0
+    fun startTimeValue(): String = fromTime?.format(TIME_FORMAT) ?: ""
+    fun endTimeValue(): String = toTime?.format(TIME_FORMAT) ?: ""
+    fun crossesMidnight(): Int = if (fromTime != null && toTime != null && fromTime.isAfter(toTime)) 1 else 0
 
     fun summary(): String = buildList {
         if (appQuery.isNotBlank()) add("приложение: $appQuery")
