@@ -44,31 +44,18 @@ interface NotificationDao {
         FROM notification_threads t
         WHERE (:eventType = 'ALL' OR EXISTS (SELECT 1 FROM notification_versions ev WHERE ev.threadId = t.id AND ev.eventType = :eventType))
           AND (:appQuery = '' OR lower(t.appName) LIKE '%' || lower(:appQuery) || '%' OR lower(t.packageName) LIKE '%' || lower(:appQuery) || '%')
-          AND (:startMillis IS NULL OR EXISTS (
-              SELECT 1 FROM notification_versions v
-              WHERE v.threadId = t.id AND v.timestamp >= :startMillis
-          ))
-          AND (:endMillis IS NULL OR EXISTS (
-              SELECT 1 FROM notification_versions v
-              WHERE v.threadId = t.id AND v.timestamp < :endMillis
-          ))
-          AND (:startTimeMinute < 0 OR EXISTS (
+          AND (:startMillis IS NULL OR EXISTS (SELECT 1 FROM notification_versions v WHERE v.threadId = t.id AND v.timestamp >= :startMillis))
+          AND (:endMillis IS NULL OR EXISTS (SELECT 1 FROM notification_versions v WHERE v.threadId = t.id AND v.timestamp < :endMillis))
+          AND (:startTime = '' OR EXISTS (
               SELECT 1 FROM notification_versions v
               WHERE v.threadId = t.id
                 AND (
-                    (:crossesMidnight = 0 AND
-                     ((CAST(strftime('%H', v.timestamp / 1000, 'unixepoch', 'localtime') AS INTEGER) * 60) +
-                      CAST(strftime('%M', v.timestamp / 1000, 'unixepoch', 'localtime') AS INTEGER)) >= :startTimeMinute AND
-                     ((CAST(strftime('%H', v.timestamp / 1000, 'unixepoch', 'localtime') AS INTEGER) * 60) +
-                      CAST(strftime('%M', v.timestamp / 1000, 'unixepoch', 'localtime') AS INTEGER)) <= :endTimeMinute)
+                    (:crossesMidnight = 0 AND time(v.timestamp / 1000, 'unixepoch', 'localtime') BETWEEN :startTime || ':00' AND :endTime || ':59')
                     OR
-                    (:crossesMidnight = 1 AND
-                     (((CAST(strftime('%H', v.timestamp / 1000, 'unixepoch', 'localtime') AS INTEGER) * 60) +
-                       CAST(strftime('%M', v.timestamp / 1000, 'unixepoch', 'localtime') AS INTEGER)) >= :startTimeMinute OR
-                      ((CAST(strftime('%H', v.timestamp / 1000, 'unixepoch', 'localtime') AS INTEGER) * 60) +
-                       CAST(strftime('%M', v.timestamp / 1000, 'unixepoch', 'localtime') AS INTEGER)) <= :endTimeMinute)
+                    (:crossesMidnight = 1 AND (time(v.timestamp / 1000, 'unixepoch', 'localtime') >= :startTime || ':00'
+                        OR time(v.timestamp / 1000, 'unixepoch', 'localtime') <= :endTime || ':59'))
                 )
-          )
+          ))
         ORDER BY t.lastChangedAt DESC
     """)
     fun observeThreadSummariesFiltered(
@@ -76,10 +63,11 @@ interface NotificationDao {
         appQuery: String,
         startMillis: Long?,
         endMillis: Long?,
-        startTimeMinute: Int,
-        endTimeMinute: Int,
+        startTime: String,
+        endTime: String,
         crossesMidnight: Int
     ): Flow<List<ThreadSummary>>
+
 
     @Query("""
         SELECT v.id, v.threadId, v.packageName, v.timestamp, v.eventType, v.title, v.text,
@@ -92,20 +80,12 @@ interface NotificationDao {
           AND (:appQuery = '' OR lower(t.appName) LIKE '%' || lower(:appQuery) || '%' OR lower(v.packageName) LIKE '%' || lower(:appQuery) || '%')
           AND (:startMillis IS NULL OR v.timestamp >= :startMillis)
           AND (:endMillis IS NULL OR v.timestamp < :endMillis)
-          AND (
-              :startTimeMinute < 0 OR
-              (:crossesMidnight = 0 AND
-               ((CAST(strftime('%H', v.timestamp / 1000, 'unixepoch', 'localtime') AS INTEGER) * 60) +
-                CAST(strftime('%M', v.timestamp / 1000, 'unixepoch', 'localtime') AS INTEGER)) >= :startTimeMinute AND
-               ((CAST(strftime('%H', v.timestamp / 1000, 'unixepoch', 'localtime') AS INTEGER) * 60) +
-                CAST(strftime('%M', v.timestamp / 1000, 'unixepoch', 'localtime') AS INTEGER)) <= :endTimeMinute)
+          AND (:startTime = '' OR (
+              (:crossesMidnight = 0 AND time(v.timestamp / 1000, 'unixepoch', 'localtime') BETWEEN :startTime || ':00' AND :endTime || ':59')
               OR
-              (:crossesMidnight = 1 AND
-               (((CAST(strftime('%H', v.timestamp / 1000, 'unixepoch', 'localtime') AS INTEGER) * 60) +
-                 CAST(strftime('%M', v.timestamp / 1000, 'unixepoch', 'localtime') AS INTEGER)) >= :startTimeMinute OR
-                ((CAST(strftime('%H', v.timestamp / 1000, 'unixepoch', 'localtime') AS INTEGER) * 60) +
-                 CAST(strftime('%M', v.timestamp / 1000, 'unixepoch', 'localtime') AS INTEGER)) <= :endTimeMinute)
-          )
+              (:crossesMidnight = 1 AND (time(v.timestamp / 1000, 'unixepoch', 'localtime') >= :startTime || ':00'
+                  OR time(v.timestamp / 1000, 'unixepoch', 'localtime') <= :endTime || ':59'))
+          ))
         ORDER BY v.timestamp ASC
     """)
     suspend fun exportRows(
@@ -113,10 +93,11 @@ interface NotificationDao {
         appQuery: String,
         startMillis: Long?,
         endMillis: Long?,
-        startTimeMinute: Int,
-        endTimeMinute: Int,
+        startTime: String,
+        endTime: String,
         crossesMidnight: Int
     ): List<ExportRow>
+
 
     @Query("SELECT * FROM notification_versions WHERE threadId = :threadId ORDER BY timestamp ASC")
     fun observeVersions(threadId: String): Flow<List<NotificationVersion>>
