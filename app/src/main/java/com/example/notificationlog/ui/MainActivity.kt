@@ -90,7 +90,7 @@ class MainActivity : ComponentActivity() {
         val csvLauncher = androidx.activity.compose.rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
             if (uri != null) lifecycleScope.launch {
                 runCatching {
-                    val rows = dao.exportRows(exportFilter.eventType, exportFilter.appQuery.trim(), exportFilter.startMillis(), exportFilter.endMillis(), exportFilter.startMinute(), exportFilter.endMinute(), exportFilter.crossesMidnight())
+                    val rows = dao.exportRows(exportFilter.eventType, exportFilter.appQuery.trim(), exportFilter.startMillis(), exportFilter.endMillis(), exportFilter.startTimeValue(), exportFilter.endTimeValue(), exportFilter.crossesMidnight())
                     NotificationExporter.exportCsv(contentResolver, uri, rows)
                 }.onSuccess {
                     Toast.makeText(this@MainActivity, "CSV экспортирован", Toast.LENGTH_SHORT).show()
@@ -100,7 +100,7 @@ class MainActivity : ComponentActivity() {
         val xlsxLauncher = androidx.activity.compose.rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) { uri ->
             if (uri != null) lifecycleScope.launch {
                 runCatching {
-                    val rows = dao.exportRows(exportFilter.eventType, exportFilter.appQuery.trim(), exportFilter.startMillis(), exportFilter.endMillis(), exportFilter.startMinute(), exportFilter.endMinute(), exportFilter.crossesMidnight())
+                    val rows = dao.exportRows(exportFilter.eventType, exportFilter.appQuery.trim(), exportFilter.startMillis(), exportFilter.endMillis(), exportFilter.startTimeValue(), exportFilter.endTimeValue(), exportFilter.crossesMidnight())
                     NotificationExporter.exportXlsx(contentResolver, uri, rows)
                 }.onSuccess {
                     Toast.makeText(this@MainActivity, "XLSX экспортирован", Toast.LENGTH_SHORT).show()
@@ -109,7 +109,7 @@ class MainActivity : ComponentActivity() {
         }
         val summaries by dao.observeThreadSummariesFiltered(
             logFilter.eventType, logFilter.appQuery.trim(), logFilter.startMillis(), logFilter.endMillis(),
-            logFilter.startMinute(), logFilter.endMinute(), logFilter.crossesMidnight()
+            logFilter.startTimeValue(), logFilter.endTimeValue(), logFilter.crossesMidnight()
         ).collectAsState(initial = emptyList())
 
         if (selectedId != null) {
