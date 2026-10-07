@@ -9,7 +9,6 @@ on:
 
 permissions:
   contents: write
-  actions: write
 
 jobs:
 
@@ -21,36 +20,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Remove old Git history
-        if: ${{ github.ref == 'refs/heads/main' }}
-        run: |
-          COUNT="$(git rev-list --count HEAD)"
-          if [ "$COUNT" -gt 1 ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git checkout --orphan clean-main
-            git add -A
-            git commit -m "NotificationLog 1.0.1 clean history"
-            git push --force origin clean-main:main
-            git checkout --detach HEAD
-            git push origin --delete clean-main || true
-          fi
-
-      - name: Remove old GitHub Actions runs and artifacts
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh api --paginate "/repos/$GITHUB_REPOSITORY/actions/runs?per_page=100" --jq '.workflow_runs[].id' |
-            while read -r RUN_ID; do
-              if [ "$RUN_ID" != "$GITHUB_RUN_ID" ]; then
-                gh api --method DELETE "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID" >/dev/null 2>&1 || true
-              fi
-            done
-          gh api --paginate "/repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100" --jq '.artifacts[].id' |
-            while read -r ARTIFACT_ID; do
-              gh api --method DELETE "/repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID" >/dev/null 2>&1 || true
-            done
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -117,7 +86,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="v1.0.1"
+          VERSION_NAME="$(sed -n 's/.*versionName[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' app/build.gradle.kts | head -n1)"
+          test -n "$VERSION_NAME"
+          TAG="v$VERSION_NAME"
           RELEASE_SHA="$(git rev-parse HEAD)"
           gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/$TAG" -f sha="$RELEASE_SHA" -F force=true >/dev/null 2>&1 || true
           if gh release view "$TAG" >/dev/null 2>&1; then
@@ -128,4 +99,4 @@ jobs:
             app/build/outputs/apk/release/app-release.apk \
             --target "${GITHUB_SHA}" \
             --title "NotificationLog $TAG" \
-            --notes "NotificationLog 1.0.1"
+            --generate-notes
